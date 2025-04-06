@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <title>電影對白合成圖產生器</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <h1>電影對白合成圖產生器</h1>
+
+  <input type="file" id="imageUploader" accept="image/*" multiple />
+  
+  <div id="cropOptions" style="display:none;">
+    <label>
+      <input type="radio" name="cropMode" value="uniform" checked />
+      統一裁切高度
+    </label>
+    <label>
+      <input type="radio" name="cropMode" value="individual" />
+      各別裁切高度
+    </label>
+
+    <div id="uniformCropDiv">
+      對白高度(px)：<input type="number" id="uniformHeight" value="50" min="1" />
+    </div>
+
+    <div id="individualCropDiv" style="display:none;"></div>
+
+    <button id="generateBtn">合成圖片</button>
+  </div>
+
+  <a id="downloadLink" style="display:none;" download="merged.png">下載合成圖</a>
+
+  <canvas id="resultCanvas"></canvas>
+
+  <script src="script.js"></script>
+</body>
+</html>
