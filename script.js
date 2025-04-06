@@ -1,98 +1,184 @@
 const uploader = document.getElementById('imageUploader');
-const cropOptions = document.getElementById('cropOptions');
-const uniformCropDiv = document.getElementById('uniformCropDiv');
-const individualCropDiv = document.getElementById('individualCropDiv');
-const uniformInput = document.getElementById('uniformHeight');
+const previewContainer = document.getElementById('previewContainer');
 const generateBtn = document.getElementById('generateBtn');
-const downloadLink = document.getElementById('downloadLink');
 const resultCanvas = document.getElementById('resultCanvas');
-const ctx = resultCanvas.getContext('2d');
+const downloadLink = document.getElementById('downloadLink');
 
-let imageFiles = [];
+let images = [];
+let coverImageIndex = null; // 追蹤封面圖的索引
 
-uploader.addEventListener('change', () => {
-  imageFiles = Array.from(uploader.files);
-  if (imageFiles.length === 0) return;
-  cropOptions.style.display = 'block';
-  generateIndividualInputs();
-});
+uploader.addEventListener('change', async () => {
+  images = await Promise.all(Array.from(uploader.files).map(loadImage));
+  previewContainer.innerHTML = '';
+  resultCanvas.style.display = 'none';
+  downloadLink.style.display = 'none';
 
-document.querySelectorAll('input[name="cropMode"]').forEach(input => {
-  input.addEventListener('change', () => {
-    const mode = getCropMode();
-    uniformCropDiv.style.display = mode === 'uniform' ? 'block' : 'none';
-    individualCropDiv.style.display = mode === 'individual' ? 'block' : 'none';
+  images.forEach((img, index) => {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'preview-wrapper';
+    wrapper.style.width = img.width + 'px';
+    wrapper.style.height = img.height + 'px';
+
+    const imageElem = document.createElement('img');
+    imageElem.src = img.src;
+    imageElem.className = 'preview-img';
+
+    wrapper.appendChild(imageElem);
+
+    if (index === 0) {
+      // 第一張圖作為封面圖，沒有裁切紅線
+      imageElem.style.cursor = 'pointer';
+      imageElem.addEventListener('click', () => setCoverImage(index, wrapper));
+    } else {
+      // 其他圖可以裁切
+      const topLine = document.createElement('div');
+      topLine.className = 'crop-line top';
+      topLine.style.top = '60%';
+
+      const bottomLine = document.createElement('div');
+      bottomLine.className = 'crop-line bottom';
+      bottomLine.style.top = '95%';
+
+      const topMask = document.createElement('div');
+      topMask.className = 'mask top-mask';
+
+      const bottomMask = document.createElement('div');
+      bottomMask.className = 'mask bottom-mask';
+
+      wrapper.appendChild(topMask);
+      wrapper.appendChild(bottomMask);
+      wrapper.appendChild(topLine);
+      wrapper.appendChild(bottomLine);
+
+      setupCropDrag(topLine, bottomLine, wrapper, topMask, bottomMask);
+      updateMasks(wrapper, topLine, bottomLine, topMask, bottomMask);
+    }
+
+    previewContainer.appendChild(wrapper);
   });
+
+  if (images.length > 0) generateBtn.style.display = 'inline-block';
 });
-
-generateBtn.addEventListener('click', async () => {
-  if (imageFiles.length === 0) return alert("請先上傳圖片");
-
-  const imgs = await Promise.all(imageFiles.map(loadImage));
-  const mode = getCropMode();
-
-  const targetWidth = Math.max(...imgs.map(img => img.width));
-
-  let totalHeight = imgs[0].height; // 第一張完整保留
-
-  const cropHeights = mode === 'uniform'
-    ? imgs.slice(1).map(() => parseInt(uniformInput.value))
-    : imgs.slice(1).map((_, i) => {
-        const input = document.getElementById(`cropInput${i}`);
-        return parseInt(input.value);
-      });
-
-  totalHeight += cropHeights.reduce((sum, h) => sum + h, 0);
-
-  resultCanvas.width = targetWidth;
-  resultCanvas.height = totalHeight;
-
-  // 繪製第一張圖（完整）
-  ctx.drawImage(imgs[0], 0, 0, targetWidth, imgs[0].height);
-
-  // 裁切與繪製其餘圖
-  let y = imgs[0].height;
-
-  for (let i = 1; i < imgs.length; i++) {
-    const img = imgs[i];
-    const cropHeight = cropHeights[i - 1];
-    ctx.drawImage(
-      img,
-      0, img.height - cropHeight, img.width, cropHeight,
-      0, y, targetWidth, cropHeight
-    );
-    y += cropHeight;
-  }
-
-  // 顯示下載
-  downloadLink.href = resultCanvas.toDataURL("image/png");
-  downloadLink.style.display = "inline-block";
-});
-
-function getCropMode() {
-  return document.querySelector('input[name="cropMode"]:checked').value;
-}
 
 function loadImage(file) {
   return new Promise((resolve) => {
     const img = new Image();
-    img.onload = () => resolve(img);
+    img.onload = () => {
+      img.originalFile = file;
+      resolve(img);
+    };
     img.src = URL.createObjectURL(file);
   });
 }
 
-function generateIndividualInputs() {
-  individualCropDiv.innerHTML = "<h3>各圖對白高度(px)：</h3>";
-  for (let i = 1; i < imageFiles.length; i++) {
-    const label = document.createElement("label");
-    label.textContent = `第 ${i+1} 張：`;
-    const input = document.createElement("input");
-    input.type = "number";
-    input.id = `cropInput${i - 1}`;
-    input.value = 50;
-    input.min = 1;
-    label.appendChild(input);
-    individualCropDiv.appendChild(label);
-    individualCropDiv.appendChild(document.createElement("br"));
-  }
+function setCoverImage(index, wrapper) {
+  // 設定封面圖
+  coverImageIndex = index;
+
+  // 使選中的圖片可以裁切
+  const coverImage = wrapper.querySelector('.preview-img');
+  const topLine = document.createElement('div');
+  topLine.className = 'crop-line top';
+  topLine.style.top = '60%';
+
+  const bottomLine = document.createElement('div');
+  bottomLine.className = 'crop-line bottom';
+  bottomLine.style.top = '95%';
+
+  const topMask = document.createElement('div');
+  topMask.className = 'mask top-mask';
+
+  const bottomMask = document.createElement('div');
+  bottomMask.className = 'mask bottom-mask';
+
+  wrapper.appendChild(topMask);
+  wrapper.appendChild(bottomMask);
+  wrapper.appendChild(topLine);
+  wrapper.appendChild(bottomLine);
+
+  setupCropDrag(topLine, bottomLine, wrapper, topMask, bottomMask);
+  updateMasks(wrapper, topLine, bottomLine, topMask, bottomMask);
 }
+
+function setupCropDrag(topLine, bottomLine, container, topMask, bottomMask) {
+  let activeLine = null;
+  const containerHeight = container.offsetHeight;
+
+  const onMove = (e) => {
+    if (!activeLine) return;
+    const y = (e.touches ? e.touches[0].clientY : e.clientY) - container.getBoundingClientRect().top;
+    const percent = Math.min(100, Math.max(0, (y / containerHeight) * 100));
+    activeLine.style.top = `${percent}%`;
+    updateMasks(container, topLine, bottomLine, topMask, bottomMask);
+  };
+
+  const stopDrag = () => { activeLine = null; };
+
+  [topLine, bottomLine].forEach(line => {
+    line.addEventListener('mousedown', () => activeLine = line);
+    line.addEventListener('touchstart', () => activeLine = line);
+  });
+
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('touchmove', onMove, { passive: false });
+  window.addEventListener('mouseup', stopDrag);
+  window.addEventListener('touchend', stopDrag);
+}
+
+function updateMasks(container, topLine, bottomLine, topMask, bottomMask) {
+  const containerHeight = container.offsetHeight;
+  const topY = parseFloat(topLine.style.top) / 100 * containerHeight;
+  const bottomY = parseFloat(bottomLine.style.top) / 100 * containerHeight;
+
+  topMask.style.top = '0px';
+  topMask.style.height = `${topY}px`;
+
+  bottomMask.style.top = `${bottomY}px`;
+  bottomMask.style.height = `${containerHeight - bottomY}px`;
+}
+
+generateBtn.addEventListener('click', async () => {
+  const canvas = resultCanvas;
+  const ctx = canvas.getContext('2d');
+  const targetWidth = Math.max(...images.map(img => img.width));
+
+  let totalHeight = images[0].height;
+  const cropHeights = [];
+
+  const previewWrappers = document.querySelectorAll('.preview-wrapper');
+  for (let i = 1; i < images.length; i++) {
+    const wrapper = previewWrappers[i];
+    const topPercent = parseFloat(wrapper.querySelector('.crop-line.top').style.top);
+    const bottomPercent = parseFloat(wrapper.querySelector('.crop-line.bottom').style.top);
+    const height = images[i].height;
+    const y1 = Math.round((topPercent / 100) * height);
+    const y2 = Math.round((bottomPercent / 100) * height);
+    cropHeights.push({ y1, y2, h: y2 - y1 });
+    totalHeight += (y2 - y1);
+  }
+
+  // 合成封面圖（裁去對白）
+  const coverImg = images[coverImageIndex];
+  const coverWrapper = previewWrappers[coverImageIndex];
+  const topLine = coverWrapper.querySelector('.crop-line.top');
+  const topPercent = parseFloat(topLine.style.top);
+  const coverHeight = coverImg.height;
+  const y1 = Math.round((topPercent / 100) * coverHeight);
+  const coverY = coverHeight - y1;
+  canvas.width = targetWidth;
+  canvas.height = totalHeight + coverY;
+
+  ctx.drawImage(coverImg, 0, y1, targetWidth, coverY);
+
+  let y = coverY;
+
+  for (let i = 1; i < images.length; i++) {
+    const { y1, h } = cropHeights[i - 1];
+    ctx.drawImage(images[i], 0, y1, targetWidth, h, 0, y, targetWidth, h);
+    y += h;
+  }
+
+  canvas.style.display = 'block';
+  downloadLink.href = canvas.toDataURL('image/png');
+  downloadLink.style.display = 'inline-block';
+});
