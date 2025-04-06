@@ -5,7 +5,7 @@ const resultCanvas = document.getElementById('resultCanvas');
 const downloadLink = document.getElementById('downloadLink');
 
 let images = [];
-let coverImageIndex = null; // 追蹤封面圖的索引
+let coverImageIndex = null;
 
 uploader.addEventListener('change', async () => {
   images = await Promise.all(Array.from(uploader.files).map(loadImage));
@@ -16,8 +16,6 @@ uploader.addEventListener('change', async () => {
   images.forEach((img, index) => {
     const wrapper = document.createElement('div');
     wrapper.className = 'preview-wrapper';
-    wrapper.style.width = img.width + 'px';
-    wrapper.style.height = img.height + 'px';
 
     const imageElem = document.createElement('img');
     imageElem.src = img.src;
@@ -26,11 +24,9 @@ uploader.addEventListener('change', async () => {
     wrapper.appendChild(imageElem);
 
     if (index === 0) {
-      // 第一張圖作為封面圖，沒有裁切紅線
       imageElem.style.cursor = 'pointer';
       imageElem.addEventListener('click', () => setCoverImage(index, wrapper));
     } else {
-      // 其他圖可以裁切
       const topLine = document.createElement('div');
       topLine.className = 'crop-line top';
       topLine.style.top = '60%';
@@ -72,10 +68,8 @@ function loadImage(file) {
 }
 
 function setCoverImage(index, wrapper) {
-  // 設定封面圖
   coverImageIndex = index;
 
-  // 使選中的圖片可以裁切
   const coverImage = wrapper.querySelector('.preview-img');
   const topLine = document.createElement('div');
   topLine.className = 'crop-line top';
@@ -157,7 +151,6 @@ generateBtn.addEventListener('click', async () => {
     totalHeight += (y2 - y1);
   }
 
-  // 合成封面圖（裁去對白）
   const coverImg = images[coverImageIndex];
   const coverWrapper = previewWrappers[coverImageIndex];
   const topLine = coverWrapper.querySelector('.crop-line.top');

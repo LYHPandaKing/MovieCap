@@ -15,18 +15,24 @@ input, button, a {
   display: flex;
   flex-direction: column;
   align-items: center;
+  overflow-x: auto;  /* 讓圖片預覽區能橫向滑動 */
+  width: 100%;
 }
 
 .preview-wrapper {
   position: relative;
   margin: 20px 0;
   border: 1px solid #ccc;
+  width: 100%;
+  max-width: 100%; /* 確保圖片不會超過容器的最大寬度 */
   touch-action: none;
 }
 
 .preview-img {
-  max-width: 100%;
+  width: 100%; /* 設定圖片自適應容器大小 */
+  height: auto; /* 保持圖片的寬高比例 */
   display: block;
+  max-width: 100%;  /* 避免圖片超出容器 */
 }
 
 .crop-line {
