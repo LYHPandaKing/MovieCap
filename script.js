@@ -3,9 +3,12 @@ const previewContainer = document.getElementById('previewContainer');
 const generateBtn = document.getElementById('generateBtn');
 const resultCanvas = document.getElementById('resultCanvas');
 const downloadLink = document.getElementById('downloadLink');
+const resetCoverBtn = document.getElementById('resetCoverBtn');
+const applyUniformCutBtn = document.getElementById('applyUniformCut');
 
 let images = [];
 let coverImageIndex = null;
+let uniformCropRange = { top: null, bottom: null };  // 用於保存統一截切範圍
 
 uploader.addEventListener('change', async () => {
   images = await Promise.all(Array.from(uploader.files).map(loadImage));
@@ -47,6 +50,8 @@ uploader.addEventListener('change', async () => {
       wrapper.appendChild(bottomLine);
 
       setupCropDrag(topLine, bottomLine, wrapper, topMask, bottomMask);
+      addCropHandles(topLine, bottomLine, wrapper);
+
       updateMasks(wrapper, topLine, bottomLine, topMask, bottomMask);
     }
 
@@ -91,6 +96,8 @@ function setCoverImage(index, wrapper) {
   wrapper.appendChild(bottomLine);
 
   setupCropDrag(topLine, bottomLine, wrapper, topMask, bottomMask);
+  addCropHandles(topLine, bottomLine, wrapper);
+
   updateMasks(wrapper, topLine, bottomLine, topMask, bottomMask);
 }
 
@@ -119,10 +126,44 @@ function setupCropDrag(topLine, bottomLine, container, topMask, bottomMask) {
   window.addEventListener('touchend', stopDrag);
 }
 
-function updateMasks(container, topLine, bottomLine, topMask, bottomMask) {
+function addCropHandles(topLine, bottomLine, wrapper) {
+  const topHandle = document.createElement('div');
+  topHandle.className = 'crop-handle top';
+  topLine.appendChild(topHandle);
+
+  const bottomHandle = document.createElement('div');
+  bottomHandle.className = 'crop-handle bottom';
+  bottomLine.appendChild(bottomHandle);
+
+  let activeHandle = null;
+
+  const onMoveHandle = (e) => {
+    if (!activeHandle) return;
+    const y = (e.touches ? e.touches[0].clientY : e.clientY) - wrapper.getBoundingClientRect().top;
+    const percent = Math.min(100, Math.max(0, (y / wrapper.offsetHeight) * 100));
+    if (activeHandle.classList.contains('top')) {
+      topLine.style.top = `${percent}%`;
+    } else {
+      bottomLine.style.top = `${percent}%`;
+    }
+    updateMasks(wrapper, topLine, bottomLine);
+  };
+
+  topHandle.addEventListener('mousedown', () => { activeHandle = topHandle; });
+  bottomHandle.addEventListener('mousedown', () => { activeHandle = bottomHandle; });
+  window.addEventListener('mousemove', onMoveHandle);
+  window.addEventListener('touchmove', onMoveHandle, { passive: false });
+  window.addEventListener('mouseup', () => { activeHandle = null; });
+  window.addEventListener('touchend', () => { activeHandle = null; });
+}
+
+function updateMasks(container, topLine, bottomLine) {
   const containerHeight = container.offsetHeight;
   const topY = parseFloat(topLine.style.top) / 100 * containerHeight;
   const bottomY = parseFloat(bottomLine.style.top) / 100 * containerHeight;
+
+  const topMask = container.querySelector('.top-mask');
+  const bottomMask = container.querySelector('.bottom-mask');
 
   topMask.style.top = '0px';
   topMask.style.height = `${topY}px`;
@@ -130,6 +171,24 @@ function updateMasks(container, topLine, bottomLine, topMask, bottomMask) {
   bottomMask.style.top = `${bottomY}px`;
   bottomMask.style.height = `${containerHeight - bottomY}px`;
 }
+
+applyUniformCutBtn.addEventListener('click', () => {
+  if (uniformCropRange.top !== null && uniformCropRange.bottom !== null) {
+    const wrappers = document.querySelectorAll('.preview-wrapper');
+    wrappers.forEach((wrapper, index) => {
+      if (index > 0) {
+        const topLine = wrapper.querySelector('.crop-line.top');
+        const bottomLine = wrapper.querySelector('.crop-line.bottom');
+        topLine.style.top = `${uniformCropRange.top}%`;
+        bottomLine.style.top = `${uniformCropRange.bottom}%`;
+
+        const topMask = wrapper.querySelector('.top-mask');
+        const bottomMask = wrapper.querySelector('.bottom-mask');
+        updateMasks(wrapper, topLine, bottomLine, topMask, bottomMask);
+      }
+    });
+  }
+});
 
 generateBtn.addEventListener('click', async () => {
   const canvas = resultCanvas;
@@ -174,4 +233,11 @@ generateBtn.addEventListener('click', async () => {
   canvas.style.display = 'block';
   downloadLink.href = canvas.toDataURL('image/png');
   downloadLink.style.display = 'inline-block';
+});
+
+resetCoverBtn.addEventListener('click', () => {
+  const previewWrappers = document.querySelectorAll('.preview-wrapper');
+  const coverWrapper = previewWrappers[coverImageIndex];
+  coverWrapper.querySelector('.preview-img').style.cursor = 'pointer';
+  coverImageIndex = null;
 });

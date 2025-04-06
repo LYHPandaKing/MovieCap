@@ -1,3 +1,4 @@
+/* 基本樣式 */
 body {
   font-family: sans-serif;
   text-align: center;
@@ -15,7 +16,7 @@ input, button, a {
   display: flex;
   flex-direction: column;
   align-items: center;
-  overflow-x: auto;  /* 讓圖片預覽區能橫向滑動 */
+  overflow-x: auto;
   width: 100%;
 }
 
@@ -24,15 +25,15 @@ input, button, a {
   margin: 20px 0;
   border: 1px solid #ccc;
   width: 100%;
-  max-width: 100%; /* 確保圖片不會超過容器的最大寬度 */
+  max-width: 100%;
   touch-action: none;
 }
 
 .preview-img {
-  width: 100%; /* 設定圖片自適應容器大小 */
-  height: auto; /* 保持圖片的寬高比例 */
+  width: 100%;
+  height: auto;
   display: block;
-  max-width: 100%;  /* 避免圖片超出容器 */
+  max-width: 100%;
 }
 
 .crop-line {
@@ -47,6 +48,19 @@ input, button, a {
 .crop-line.top { cursor: ns-resize; }
 .crop-line.bottom { cursor: ns-resize; }
 
+.crop-handle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background-color: red;
+  border-radius: 50%;
+  z-index: 4;
+  cursor: pointer;
+}
+
+.crop-handle.top { top: -5px; left: 50%; transform: translateX(-50%); }
+.crop-handle.bottom { bottom: -5px; left: 50%; transform: translateX(-50%); }
+
 .mask {
   position: absolute;
   width: 100%;
@@ -59,4 +73,16 @@ canvas {
   max-width: 100%;
   margin-top: 20px;
   border: 1px solid #aaa;
+}
+
+button#applyUniformCut {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+button#applyUniformCut:hover {
+  background-color: #0056b3;
 }
